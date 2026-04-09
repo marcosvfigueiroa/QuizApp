@@ -65,32 +65,3 @@ cd FrontendBlazor && dotnet run
 ```
 
 Then open: **https://localhost:5288**
-
----
-
-## What Was Merged
-
-| Feature | Origin |
-|---------|--------|
-| **QuizRunner** (take a quiz, nav, scoring, result ring) | Project 1 |
-| **Auth** (login, register, profile, JWT) | Project 2 |
-| **Quiz CRUD** (create, edit, delete, duplicate) | Project 2 |
-| **Publish/Unpublish** | Project 2 |
-| **CSV/JSON Import** | Project 2 |
-| **Professional UI** (21st.dev-inspired design system) | New |
-| **Dark sidebar layout** | New |
-| **Score ring SVG** | New |
-| **Question navigation dots** | New |
-
----
-
-## Design System
-
-Uses **Plus Jakarta Sans** font. Key CSS variables:
-
-```css
---brand:     #6366f1   /* Indigo accent */
---sidebar-bg: #0d1117  /* Dark sidebar */
---radius:    10px
---shadow-sm: 0 2px 8px rgba(0,0,0,0.06)
-```
