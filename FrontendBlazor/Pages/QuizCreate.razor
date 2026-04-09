@@ -1,0 +1,69 @@
+@page "/quizzes/create"
+@inject QuizService QuizService
+@inject NavigationManager Nav
+@inject TokenState Token
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Create Quiz</h1>
+        <p>Set up the basics — you can add questions next.</p>
+    </div>
+    <a href="/quizzes" class="btn btn-secondary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Back
+    </a>
+</div>
+
+<div style="max-width:600px;">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Quiz Details</span>
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <div class="form-group">
+                <label class="form-label">Title <span class="required">*</span></label>
+                <input class="form-control" type="text" @bind="_title" placeholder="e.g. C# Fundamentals" />
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" @bind="_description" placeholder="Optional description for this quiz..." rows="3"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top:16px;display:flex;gap:10px;">
+        <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+            @if (_saving) { <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> }
+            Create &amp; add questions →
+        </button>
+        <a href="/quizzes" class="btn btn-ghost">Cancel</a>
+    </div>
+</div>
+
+@code {
+    private string _title       = "";
+    private string? _description;
+    private string? _error;
+    private bool _saving = false;
+
+    protected override void OnInitialized()
+    {
+        if (!Token.IsAuthenticated) Nav.NavigateTo("/login");
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_title)) { _error = "Please enter a title."; return; }
+        _saving = true; _error = null;
+        var id = await QuizService.CreateQuizAsync(_title, _description);
+        _saving = false;
+        if (id.HasValue) Nav.NavigateTo($"/quizzes/{id.Value}/edit");
+        else _error = "Could not create quiz. Please try again.";
+    }
+}

@@ -1,0 +1,117 @@
+@page "/quizzes/{Id:int}/preview"
+@using FrontendBlazor.Services
+@inject QuizService QuizService
+@inject NavigationManager Nav
+@inject TokenState Token
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Preview</h1>
+        <p>@(_quiz?.Title ?? "Loading...")</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-secondary btn-sm" @onclick="ToggleCorrection">
+            @if (_showCorrection)
+            {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                <span>Hide answers</span>
+            }
+            else
+            {
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Show answers</span>
+            }
+        </button>
+        @if (_quiz != null)
+        {
+            <a href="/quizzes/@_quiz.Id/edit" class="btn btn-secondary btn-sm">Edit</a>
+            @if (_quiz.IsPublished)
+            {
+                <a href="/quizzes/@_quiz.Id/run" class="btn btn-primary btn-sm">Take Quiz</a>
+            }
+        }
+        <a href="/quizzes" class="btn btn-ghost btn-sm">← Back</a>
+    </div>
+</div>
+
+@if (_quiz == null)
+{
+    <div class="loading-state"><div class="spinner"></div><span>Loading...</span></div>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(_quiz.Description))
+    {
+        <div class="alert alert-info" style="margin-bottom:20px;">@_quiz.Description</div>
+    }
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <span class="badge @(_quiz.IsPublished ? "badge-success" : "badge-neutral")">
+            @(_quiz.IsPublished ? "Published" : "Draft")
+        </span>
+        <span style="font-size:13px;color:var(--text-secondary);">@_quiz.Questions.Count question@(_quiz.Questions.Count != 1 ? "s" : "")</span>
+        @if (_showCorrection)
+        {
+            <span class="badge badge-warning">Answer key visible</span>
+        }
+    </div>
+
+    @foreach (var (q, idx) in _quiz.Questions.Select((q, i) => (q, i)))
+    {
+        <div class="preview-question">
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+                <div style="width:26px;height:26px;border-radius:50%;background:var(--brand-subtle);color:var(--brand);display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0;border:1.5px solid var(--brand-light);">@(idx + 1)</div>
+                <div>
+                    <h4 style="margin:0 0 4px;">@q.Statement</h4>
+                    <div style="display:flex;gap:8px;">
+                        <span class="badge @GetCategoryBadge(q.Category)">@GetCategoryLabel(q.Category)</span>
+                        <span class="badge badge-neutral">×@q.Weight pt@(q.Weight != 1 ? "s" : "")</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="choice-list" style="padding-left:38px;">
+                @foreach (var c in q.Choices)
+                {
+                    <div class="preview-choice @(_showCorrection && c.IsCorrect ? "is-correct" : "")">
+                        <input type="radio" disabled />
+                        <span>@c.Text</span>
+                        @if (_showCorrection && c.IsCorrect)
+                        {
+                            <span style="margin-left:auto;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_quiz.Questions.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+            <h3>No questions yet</h3>
+            <p>Add some questions before previewing.</p>
+            <a href="/quizzes/@_quiz.Id/edit" class="btn btn-primary">Add Questions</a>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private QuizService.QuizDetail? _quiz;
+    private bool _showCorrection = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Token.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+        _quiz = await QuizService.GetQuizAsync(Id);
+    }
+
+    private void ToggleCorrection() => _showCorrection = !_showCorrection;
+
+    private string GetCategoryLabel(int cat) => cat switch { 0 => "Easy", 1 => "Medium", 2 => "Hard", _ => "?" };
+    private string GetCategoryBadge(int cat)  => cat switch { 0 => "badge-success", 1 => "badge-warning", 2 => "badge-danger", _ => "badge-neutral" };
+}

@@ -1,0 +1,70 @@
+@page "/login"
+@layout FrontendBlazor.Shared.MainLayout
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="auth-logo-icon">Q</div>
+            <span class="auth-logo-name">QuizApp</span>
+        </div>
+
+        <h2>Sign in</h2>
+        <p class="subtitle">Enter your credentials to access your quizzes.</p>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                @_error
+            </div>
+        }
+
+        <div class="form-group">
+            <label class="form-label">Email <span class="required">*</span></label>
+            <input class="form-control" type="email" @bind="_email" placeholder="you@example.com" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Password <span class="required">*</span></label>
+            <input class="form-control" type="password" @bind="_password" placeholder="••••••••" @onkeydown="OnKeyDown" />
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-top:4px;" @onclick="DoLogin" disabled="@_loading">
+            @if (_loading) { <div class="spinner" style="width:15px;height:15px;border-width:2px;"></div> }
+            Sign in
+        </button>
+
+        <div class="auth-footer">
+            Don't have an account? <a href="/register">Create one</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _email = "";
+    private string _password = "";
+    private string? _error;
+    private bool _loading = false;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await DoLogin();
+    }
+
+    private async Task DoLogin()
+    {
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        {
+            _error = "Please enter your email and password.";
+            return;
+        }
+        _loading = true;
+        _error = null;
+        var ok = await Auth.LoginAsync(_email, _password);
+        _loading = false;
+        if (ok) Nav.NavigateTo("/");
+        else _error = "Invalid email or password. Please try again.";
+    }
+}

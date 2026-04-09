@@ -1,0 +1,115 @@
+@page "/quizzes/{Id:int}/import"
+@using FrontendBlazor.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject QuizService QuizService
+@inject NavigationManager Nav
+@inject TokenState Token
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Import Questions</h1>
+        <p>Upload a CSV or JSON file to bulk-add questions to this quiz.</p>
+    </div>
+    <a href="/quizzes/@Id/edit" class="btn btn-ghost btn-sm">← Back to edit</a>
+</div>
+
+<div style="max-width:560px;">
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert @(_success ? "alert-success" : "alert-danger")">
+            @_message
+        </div>
+    }
+
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><span class="card-title">Upload File</span></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Format</label>
+                <select class="form-control" @bind="_importType" style="max-width:180px;">
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">File <span class="required">*</span></label>
+                <div style="position:relative; border:2px dashed var(--border); border-radius:var(--radius); padding:28px 20px; text-align:center; cursor:pointer; border-color:@(_file != null ? "var(--brand)" : "")">
+    
+                <InputFile OnChange="OnFileChange" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer;" />
+    
+                    @if (_file != null)
+                    {
+                        <div style="color:var(--brand);font-weight:600;font-size:14px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto 6px;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            @_file.Name
+                            <span style="font-size:12px;color:var(--text-muted);font-weight:400;display:block;">@FormatSize(_file.Size)</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="color:var(--text-muted);font-size:13.5px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto 8px;opacity:0.5;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Drop file here or <strong style="color:var(--brand);">browse</strong>
+                            <span style="display:block;font-size:12px;margin-top:4px;">.csv or .json files accepted</span>
+                        </div>
+                    }
+                </div>
+                <span class="form-hint">Max 10 MB. For CSV: columns should be Statement, Category, Weight, Choice1, IsCorrect1, …</span>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" @onclick="Upload" disabled="@(_uploading || _file == null)">
+            @if (_uploading) { <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> }
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import questions
+        </button>
+        <a href="/quizzes/@Id/edit" class="btn btn-ghost">Cancel</a>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private IBrowserFile? _file;
+    private string  _importType = "csv";
+    private string? _message;
+    private bool    _success    = false;
+    private bool    _uploading  = false;
+
+    protected override void OnInitialized()
+    {
+        if (!Token.IsAuthenticated) Nav.NavigateTo("/login");
+    }
+
+    private void OnFileChange(InputFileChangeEventArgs e) => _file = e.File;
+
+    private async Task Upload()
+    {
+        if (_file is null) { _message = "Please select a file first."; return; }
+        _uploading = true; _message = null;
+        await using var stream = _file.OpenReadStream(10 * 1024 * 1024);
+        bool ok = _importType == "csv"
+            ? await QuizService.ImportCsvAsync(Id, stream, _file.Name)
+            : await QuizService.ImportJsonAsync(Id, stream, _file.Name);
+        _uploading = false;
+        if (ok) { _success = true; Nav.NavigateTo($"/quizzes/{Id}/edit"); }
+        else { _success = false; _message = "Import failed. Please check the file format and try again."; }
+    }
+
+    private string FormatSize(long bytes) => bytes switch
+    {
+        < 1024         => $"{bytes} B",
+        < 1024 * 1024  => $"{bytes / 1024.0:F1} KB",
+        _              => $"{bytes / (1024.0 * 1024):F1} MB"
+    };
+}

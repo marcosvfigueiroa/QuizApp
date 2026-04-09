@@ -1,0 +1,266 @@
+@page "/quizzes/{Id:int}/run"
+@using FrontendBlazor.Services
+@inject QuizService QuizService
+@inject NavigationManager Nav
+
+@if (_quiz == null && _loading)
+{
+    <div class="loading-state"><div class="spinner"></div><span>Loading quiz...</span></div>
+}
+else if (_quiz == null)
+{
+    <div class="alert alert-danger">Quiz not found or not accessible. <a href="/quizzes">Back to quizzes</a></div>
+}
+else if (!_submitted)
+{
+    <!-- Quiz in progress -->
+    <div class="quiz-runner-shell">
+        <div class="quiz-runner-header">
+            <h2>@_quiz.Title</h2>
+            <div class="quiz-runner-meta">
+                @if (!string.IsNullOrWhiteSpace(_quiz.Description))
+                {
+                    <span>@_quiz.Description &nbsp;·&nbsp; </span>
+                }
+                <span>@_quiz.Questions.Count question@(_quiz.Questions.Count != 1 ? "s" : "")</span>
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" style="width:@ProgressPercent;"></div>
+        </div>
+        <div class="progress-label" style="margin-bottom:20px;">
+            Question @(_index + 1) of @_quiz.Questions.Count
+        </div>
+
+        <!-- Question card -->
+        @{
+            var current = _quiz.Questions[_index];
+        }
+        <div class="question-card">
+            <div class="question-meta">
+                <span class="badge @GetCategoryBadge(current.Category)">@GetCategoryLabel(current.Category)</span>
+                <span class="badge badge-neutral">@current.Weight pt@(current.Weight != 1 ? "s" : "")</span>
+                @if (_selected.ContainsKey(current.Id))
+                {
+                    <span class="badge badge-success" style="margin-left:auto;">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Answered
+                    </span>
+                }
+            </div>
+
+            <div class="question-text">@current.Statement</div>
+
+            <div class="choice-list">
+                @foreach (var choice in current.Choices)
+                {
+                    var isSelected = _selected.TryGetValue(current.Id, out var sel) && sel == choice.Id;
+                    <div class="choice-item @(isSelected ? "selected" : "")"
+                         @onclick="() => SelectChoice(current.Id, choice.Id)">
+                        <div class="choice-radio"></div>
+                        <span class="choice-text">@choice.Text</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="quiz-nav">
+            <button class="btn btn-secondary" @onclick="Prev" disabled="@(_index == 0)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Previous
+            </button>
+
+            <!-- Question dots -->
+            <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;">
+                @for (int i = 0; i < _quiz.Questions.Count; i++)
+                {
+                    var qi    = i;
+                    var qId   = _quiz.Questions[i].Id;
+                    var isCur = i == _index;
+                    var isDone = _selected.ContainsKey(qId);
+                    <button
+                        style="width:28px;height:28px;border-radius:50%;border:2px solid @(isCur ? "var(--brand)" : isDone ? "var(--success)" : "var(--border)");background:@(isCur ? "var(--brand)" : isDone ? "var(--success-subtle)" : "var(--surface)");color:@(isCur ? "#fff" : isDone ? "var(--success)" : "var(--text-muted)");font-size:11px;font-weight:700;cursor:pointer;transition:all 150ms;"
+                        @onclick="() => GoTo(qi)">
+                        @(qi + 1)
+                    </button>
+                }
+            </div>
+
+            <div class="quiz-nav-spacer"></div>
+
+            @if (_index < _quiz.Questions.Count - 1)
+            {
+                <button class="btn btn-secondary" @onclick="Next">
+                    Next
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+            }
+
+            <button class="btn btn-primary" @onclick="Submit" disabled="@(!CanSubmit)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Submit Quiz
+            </button>
+        </div>
+
+        @if (!CanSubmit)
+        {
+            <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:10px;">
+                Answer all @_quiz.Questions.Count questions to submit.
+                (@_selected.Count / @_quiz.Questions.Count answered)
+            </p>
+        }
+    </div>
+}
+else
+{
+    <!-- Results screen -->
+    <div class="quiz-runner-shell">
+        <div class="result-screen">
+            <!-- Score ring -->
+            <div class="score-ring">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                    <circle cx="60" cy="60" r="52" stroke="var(--surface-2)" stroke-width="10" fill="none"/>
+                    <circle cx="60" cy="60" r="52"
+                            stroke="@ScoreColor"
+                            stroke-width="10"
+                            fill="none"
+                            stroke-linecap="round"
+                            stroke-dasharray="@Circumference"
+                            stroke-dashoffset="@DashOffset" />
+                </svg>
+                <div class="score-ring-text">
+                    @_score
+                    <small>/ @_totalPoints pt@(_totalPoints != 1 ? "s" : "")</small>
+                </div>
+            </div>
+
+            <div class="result-title">
+                @if (ScorePercent >= 80) { <span>Excellent work! 🎉</span> }
+                else if (ScorePercent >= 60) { <span>Good job! 👍</span> }
+                else if (ScorePercent >= 40) { <span>Keep practicing! 📚</span> }
+                else { <span>Better luck next time! 💪</span> }
+            </div>
+            <div class="result-subtitle">
+                You scored <strong>@_score</strong> out of <strong>@_totalPoints</strong> points
+                (@((int)ScorePercent)%)
+            </div>
+
+            <!-- Per-question breakdown -->
+            <div class="result-questions">
+                @foreach (var q in _quiz.Questions)
+                {
+                    var selectedId = _selected.TryGetValue(q.Id, out var s) ? s : (int?)null;
+                    var correctChoice = q.Choices.FirstOrDefault(c => c.IsCorrect);
+                    var isCorrect = selectedId.HasValue && selectedId == correctChoice?.Id;
+                    var selectedChoice = q.Choices.FirstOrDefault(c => c.Id == selectedId);
+
+                    <div class="result-question-item @(isCorrect ? "is-correct" : "is-wrong")">
+                        <div class="rqi-header">
+                            <div class="rqi-icon">
+                                @if (isCorrect)
+                                {
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="20 6 9 17 4 12"/></svg>
+                                }
+                                else
+                                {
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                }
+                            </div>
+                            <div class="rqi-text">@q.Statement</div>
+                            <div class="rqi-points">@(isCorrect ? $"+{q.Weight}" : "0") pt@(q.Weight != 1 ? "s" : "")</div>
+                        </div>
+                        @if (!isCorrect)
+                        {
+                            <div class="rqi-body">
+                                @if (selectedChoice != null)
+                                {
+                                    <div>Your answer: <span style="color:var(--danger);font-weight:600;">@selectedChoice.Text</span></div>
+                                }
+                                else
+                                {
+                                    <div style="color:var(--text-muted);">Not answered</div>
+                                }
+                                @if (correctChoice != null)
+                                {
+                                    <div style="margin-top:3px;">Correct answer: <span class="correct-label">@correctChoice.Text</span></div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Actions -->
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+                <button class="btn btn-secondary" @onclick="Restart">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Try again
+                </button>
+                <a href="/quizzes" class="btn btn-primary">Back to quizzes</a>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private QuizService.QuizDetail? _quiz;
+    private bool _loading   = true;
+    private bool _submitted = false;
+    private int  _index     = 0;
+    private int  _score     = 0;
+    private int  _totalPoints = 0;
+
+    private readonly Dictionary<int, int> _selected = new();
+
+    private string ProgressPercent => _quiz == null ? "0%" : $"{(int)((_index + 1) * 100.0 / _quiz.Questions.Count)}%";
+    private bool   CanSubmit       => _quiz != null && _selected.Count == _quiz.Questions.Count;
+    private double ScorePercent    => _totalPoints == 0 ? 0 : _score * 100.0 / _totalPoints;
+
+    private const double Circumference = 2 * Math.PI * 52; // r=52
+    private string DashOffset => $"{Circumference * (1 - ScorePercent / 100):F1}";
+    private string ScoreColor => ScorePercent >= 80 ? "var(--success)" : ScorePercent >= 50 ? "var(--warning)" : "var(--danger)";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _quiz = await QuizService.GetQuizAsync(Id);
+        if (_quiz != null) _totalPoints = _quiz.Questions.Sum(q => q.Weight);
+        _loading = false;
+    }
+
+    private void SelectChoice(int questionId, int choiceId)
+    {
+        _selected[questionId] = choiceId;
+    }
+
+    private void Next() { if (_quiz != null && _index < _quiz.Questions.Count - 1) _index++; }
+    private void Prev() { if (_index > 0) _index--; }
+    private void GoTo(int i) => _index = i;
+
+    private void Submit()
+    {
+        if (_quiz == null) return;
+        _score = 0;
+        foreach (var q in _quiz.Questions)
+        {
+            if (_selected.TryGetValue(q.Id, out var cId) && q.Choices.Any(c => c.Id == cId && c.IsCorrect))
+                _score += q.Weight;
+        }
+        _submitted = true;
+    }
+
+    private void Restart()
+    {
+        _selected.Clear();
+        _index     = 0;
+        _score     = 0;
+        _submitted = false;
+    }
+
+    private string GetCategoryLabel(int cat) => cat switch { 0 => "Easy", 1 => "Medium", 2 => "Hard", _ => "?" };
+    private string GetCategoryBadge(int cat)  => cat switch { 0 => "badge-success", 1 => "badge-warning", 2 => "badge-danger", _ => "badge-neutral" };
+}

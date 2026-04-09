@@ -1,0 +1,151 @@
+@page "/"
+@using FrontendBlazor.Services
+@inject TokenState Token
+@inject QuizService QuizService
+
+@if (Token.IsAuthenticated)
+{
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1>Dashboard</h1>
+            <p>Manage your quizzes and track your activity.</p>
+        </div>
+        <a href="/quizzes/create" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Quiz
+        </a>
+    </div>
+
+    <div class="stat-grid">
+        <div class="metric-card" title="Total Quizzes">
+            <div class="metric-card-header">
+                <span class="metric-card-label">Total Quizzes</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+            </div>
+            <div class="metric-card-value">@(_quizzes?.Count ?? 0)</div>
+            <div class="metric-card-trend trend-neutral"><span>—</span> in your library</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-card-header">
+                <span class="metric-card-label">Published</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+            </div>
+            <div class="metric-card-value">@(_quizzes?.Count(q => q.IsPublished) ?? 0)</div>
+            <div class="metric-card-trend trend-up">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" /></svg>
+                visible to students
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-card-header">
+                <span class="metric-card-label">Total Questions</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+            </div>
+            <div class="metric-card-value">@(_quizzes?.Sum(q => q.QuestionCount) ?? 0)</div>
+            <div class="metric-card-trend trend-neutral"><span>—</span> across all quizzes</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-card-header">
+                <span class="metric-card-label">Drafts</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+            </div>
+            <div class="metric-card-value">@(_quizzes?.Count(q => !q.IsPublished) ?? 0)</div>
+            <div class="metric-card-trend trend-down">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
+                not yet published
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Recent Quizzes</span>
+            <a href="/quizzes" class="btn btn-ghost btn-sm">View all →</a>
+        </div>
+        @if (_loading)
+        {
+            <div class="loading-state"><div class="spinner"></div><span>Loading...</span></div>
+        }
+        else if (_quizzes == null || _quizzes.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                </div>
+                <h3>No quizzes yet</h3>
+                <p>Create your first quiz to get started.</p>
+                <a href="/quizzes/create" class="btn btn-primary">Create Quiz</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none;">
+                <table>
+                    <thead>
+                        <tr><th>Title</th><th>Questions</th><th>Status</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var q in _quizzes.Take(5))
+                        {
+                            <tr>
+                                <td><strong>@q.Title</strong></td>
+                                <td>@q.QuestionCount question@(q.QuestionCount != 1 ? "s" : "")</td>
+                                <td>
+                                    @if (q.IsPublished)
+                                    {
+                                        <span class="badge badge-success">Published</span>
+                                    }
+                                    else
+                                    {
+
+                                        <span class="badge badge-neutral">Draft</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="td-actions">
+                                        <a href="/quizzes/@q.Id/edit" class="btn btn-secondary btn-sm">Edit</a>
+                                        @if (q.IsPublished)
+                                        {
+                                            <a href="/quizzes/@q.Id/run" class="btn btn-primary btn-sm">Take Quiz</a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <BackgroundPaths Title="Build Better Quizzes">
+        <p style="font-size:15.5px;color:var(--text-secondary);line-height:1.7;margin-bottom:32px;max-width:480px;margin-left:auto;margin-right:auto;">
+            Create, publish and share interactive quizzes. Track scores and manage your library from one place.
+        </p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <a href="/register" class="btn btn-primary btn-lg">Get started free</a>
+            <a href="/login" class="btn btn-secondary btn-lg">Sign in</a>
+        </div>
+    </BackgroundPaths>
+}
+
+@code {
+    private List<QuizService.QuizListItem>? _quizzes;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Token.IsAuthenticated)
+            _quizzes = await QuizService.GetQuizzesAsync();
+        _loading = false;
+    }
+}

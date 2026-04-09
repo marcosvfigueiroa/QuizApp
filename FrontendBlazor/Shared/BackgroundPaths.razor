@@ -1,0 +1,14 @@
+﻿<div class="bg-paths-wrapper">
+
+    @* Content *@
+    <div class="bg-paths-content">
+        <h1 class="bg-paths-title">@Title</h1>
+        @ChildContent
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Welcome to QuizApp";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
