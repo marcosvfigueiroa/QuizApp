@@ -5,69 +5,95 @@
 @implements IDisposable
 
 <div class="app-shell">
-    @if (_sidebarOpen)
-    {
-        <div class="sidebar-overlay" @onclick="CloseSidebar"></div>
-    }
+    
 
-    <aside class="sidebar @(_sidebarOpen ? "open" : "")">
+    <aside class="sidebar @(_collapsed ? "collapsed" : "expanded")"
+           @onmouseenter="Expand"
+           @onmouseleave="Collapse">
+
+        {{-- ── Logo ── --}}
         <a class="sidebar-logo" href="/">
             <div class="sidebar-logo-icon">Q</div>
-            <div class="sidebar-logo-text">
+            <span class="sidebar-label sidebar-logo-text">
                 QuizApp
                 <small>Platform</small>
-            </div>
+            </span>
         </a>
 
+        {{-- ── Nav ── --}}
         <nav class="sidebar-nav">
-            <span class="sidebar-section-label">Navigation</span>
+            <span class="sidebar-section-label sidebar-label">Navigation</span>
 
             <NavLink class="sidebar-link" href="/" Match="NavLinkMatch.All">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                Home
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+                <span class="sidebar-label">Home</span>
             </NavLink>
 
             <NavLink class="sidebar-link" href="/quizzes">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                My Quizzes
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+                <span class="sidebar-label">My Quizzes</span>
             </NavLink>
 
             @if (Token.IsAuthenticated)
             {
                 <NavLink class="sidebar-link" href="/profile">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    Profile
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span class="sidebar-label">Profile</span>
                 </NavLink>
             }
 
-            <span class="sidebar-section-label" style="margin-top:10px;">Account</span>
+            <span class="sidebar-section-label sidebar-label" style="margin-top:10px;">Account</span>
 
             @if (Token.IsAuthenticated)
             {
                 <button class="sidebar-link" @onclick="Logout">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Sign out
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span class="sidebar-label">Sign out</span>
                 </button>
             }
             else
             {
                 <NavLink class="sidebar-link" href="/login">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                    Sign in
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                        <polyline points="10 17 15 12 10 7" />
+                        <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                    <span class="sidebar-label">Sign in</span>
                 </NavLink>
                 <NavLink class="sidebar-link" href="/register">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                    Register
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <line x1="19" y1="8" x2="19" y2="14" />
+                        <line x1="22" y1="11" x2="16" y2="11" />
+                    </svg>
+                    <span class="sidebar-label">Register</span>
                 </NavLink>
             }
         </nav>
 
+        {{-- ── Footer / User ── --}}
         @if (Token.IsAuthenticated)
         {
             <div class="sidebar-footer">
                 <div class="sidebar-user">
                     <div class="sidebar-avatar">@GetInitial()</div>
-                    <div class="sidebar-user-info">
+                    <div class="sidebar-label sidebar-user-info">
                         <div class="sidebar-user-name">@Token.FullName</div>
                         <div class="sidebar-user-email">@Token.Email</div>
                     </div>
@@ -77,14 +103,6 @@
     </aside>
 
     <div class="main-content">
-        <header class="mobile-header">
-            <button class="hamburger-btn" @onclick="ToggleSidebar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
-            <div class="sidebar-logo-icon" style="width:28px;height:28px;font-size:14px;">Q</div>
-            <span style="color:white;font-weight:700;font-size:15px;">QuizApp</span>
-        </header>
-
         @if (Token.IsAuthenticated)
         {
             <header class="topbar">
@@ -101,20 +119,26 @@
 </div>
 
 @code {
-    private bool _sidebarOpen = false;
-    private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
-    private void CloseSidebar()  => _sidebarOpen = false;
+    private bool _collapsed = true;
+
+    private void Expand() => _collapsed = false;
+    private void Collapse() => _collapsed = true;
+
     private string GetInitial()
     {
         var name = Token.FullName ?? Token.Email ?? "?";
         return name.Length > 0 ? name[0].ToString().ToUpper() : "?";
     }
+
     private void Logout() { Auth.Logout(); Nav.NavigateTo("/login"); }
-    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    protected override void OnInitialized()
+        => Nav.LocationChanged += OnLocationChanged;
+
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        _sidebarOpen = false;
         InvokeAsync(StateHasChanged);
     }
+
     public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 }
